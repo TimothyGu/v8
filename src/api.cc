@@ -4345,11 +4345,6 @@ Maybe<bool> v8::Object::CreateDataProperty(v8::Local<v8::Context> context,
   return result;
 }
 
-struct v8::PropertyDescriptor::PrivateData {
-  PrivateData() : desc() {}
-  i::PropertyDescriptor desc;
-};
-
 v8::PropertyDescriptor::PropertyDescriptor() : private_(new PrivateData()) {}
 
 void v8::PropertyDescriptor::Reset() {

@@ -124,13 +124,14 @@ class PropertyDescriptor {
   Handle<Object> get_;
   Handle<Object> set_;
   Handle<Object> name_;
-
-  // Some compilers (Xcode 5.1, ARM GCC 4.9) insist on having a copy
-  // constructor for std::vector<PropertyDescriptor>, so we can't
-  // DISALLOW_COPY_AND_ASSIGN(PropertyDescriptor); here.
 };
 
 }  // namespace internal
+
+struct v8::PropertyDescriptor::PrivateData {
+  PrivateData() : desc() {}
+  v8::internal::PropertyDescriptor desc;
+};
 }  // namespace v8
 
 #endif  // V8_PROPERTY_DESCRIPTOR_H_

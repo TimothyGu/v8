@@ -8,6 +8,7 @@
 #include "src/api-arguments.h"
 
 #include "src/objects/api-callbacks.h"
+#include "src/property-descriptor.h"
 #include "src/tracing/trace-event.h"
 #include "src/vm-state-inl.h"
 
@@ -187,6 +188,25 @@ Handle<Object> PropertyCallbackArguments::CallNamedDefiner(
   return GetReturnValue<Object>(isolate);
 }
 
+void PropertyCallbackArguments::CallNamedDescriptorNative(
+    Isolate* isolate,
+    JSObject* holder,
+    Handle<InterceptorInfo> interceptor,
+    Handle<Name> name,
+    PropertyDescriptor* desc) {
+  DCHECK_NAME_COMPATIBLE(interceptor, name);
+  RuntimeCallTimerScope timer(isolate,
+                              RuntimeCallCounterId::kNamedDescriptorCallback); // FIXME
+  LOG(isolate,
+      ApiNamedPropertyAccess("interceptor-named-descriptor-native", holder, *name));
+  GenericNamedPropertyDescriptorNativeCallback f =
+      ToCData<GenericNamedPropertyDescriptorNativeCallback>(
+          interceptor->descriptor_native());
+  v8::PropertyDescriptor outside_desc;
+  f(v8::Utils::ToLocal(name), &outside_desc);
+  *desc = outside_desc.get_private()->desc;
+}
+
 Handle<Object> PropertyCallbackArguments::CallIndexedSetter(
     Handle<InterceptorInfo> interceptor, uint32_t index, Handle<Object> value) {
   DCHECK(!interceptor->is_named());
@@ -254,6 +274,25 @@ Handle<Object> PropertyCallbackArguments::BasicCallIndexedGetterCallback(
   PREPARE_CALLBACK_INFO(isolate, f, Handle<Object>, v8::Value, info);
   f(index, callback_info);
   return GetReturnValue<Object>(isolate);
+}
+
+void PropertyCallbackArguments::CallIndexedDescriptorNative(
+    Isolate* isolate,
+    JSObject* holder,
+    Handle<InterceptorInfo> interceptor,
+    uint32_t index,
+    PropertyDescriptor* desc) {
+  DCHECK(!interceptor->is_named());
+  RuntimeCallTimerScope timer(isolate,
+                              RuntimeCallCounterId::kIndexedDescriptorCallback); // FIXME
+  LOG(isolate,
+      ApiIndexedPropertyAccess("interceptor-indexed-descriptor-native", holder, index));
+  IndexedPropertyDescriptorNativeCallback f =
+      ToCData<IndexedPropertyDescriptorNativeCallback>(
+          interceptor->descriptor_native());
+  v8::PropertyDescriptor outside_desc;
+  f(index, &outside_desc);
+  *desc = outside_desc.get_private()->desc;
 }
 
 Handle<JSObject> PropertyCallbackArguments::CallPropertyEnumerator(

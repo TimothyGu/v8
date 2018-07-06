@@ -7815,9 +7815,20 @@ Maybe<bool> GetPropertyDescriptorWithInterceptor(LookupIterator* it,
   if (has_access && it->state() == LookupIterator::INTERCEPTOR) {
     Isolate* isolate = it->isolate();
     Handle<InterceptorInfo> interceptor = it->GetInterceptor();
-    if (!interceptor->descriptor()->IsUndefined(isolate)) {
+    Handle<JSObject> holder = it->GetHolder<JSObject>();
+
+    if (!interceptor->descriptor_native()->IsUndefined(isolate)) {
+      if (it->IsElement()) {
+        PropertyCallbackArguments::CallIndexedDescriptorNative(
+            isolate, *holder, interceptor, it->index(), desc);
+      } else {
+        PropertyCallbackArguments::CallNamedDescriptorNative(
+            isolate, *holder, interceptor, it->name(), desc);
+      }
+      if (!desc->is_empty())
+        return Just(true);
+    } else if (!interceptor->descriptor()->IsUndefined(isolate)) {
       Handle<Object> result;
-      Handle<JSObject> holder = it->GetHolder<JSObject>();
 
       Handle<Object> receiver = it->GetReceiver();
       if (!receiver->IsJSReceiver()) {
