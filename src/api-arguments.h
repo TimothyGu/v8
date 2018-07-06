@@ -126,15 +126,12 @@ class PropertyCallbackArguments
                                          Handle<Name> name);
   inline Handle<Object> CallNamedDescriptor(Handle<InterceptorInfo> interceptor,
                                             Handle<Name> name);
-  inline Handle<JSObject> CallNamedEnumerator(
-      Handle<InterceptorInfo> interceptor);
-
-  static inline void CallNamedDescriptorNative(
-      Isolate* isolate,
-      JSObject* holder,
+  inline Handle<Object> CallNamedDescriptorNative(
       Handle<InterceptorInfo> interceptor,
       Handle<Name> name,
       PropertyDescriptor* desc);
+  inline Handle<JSObject> CallNamedEnumerator(
+      Handle<InterceptorInfo> interceptor);
 
   // -------------------------------------------------------------------------
   // Indexed Interceptor Callbacks
@@ -151,15 +148,12 @@ class PropertyCallbackArguments
                                            uint32_t index);
   inline Handle<Object> CallIndexedDescriptor(
       Handle<InterceptorInfo> interceptor, uint32_t index);
-  inline Handle<JSObject> CallIndexedEnumerator(
-      Handle<InterceptorInfo> interceptor);
-
-  static inline void CallIndexedDescriptorNative(
-      Isolate* isolate,
-      JSObject* holder,
+  inline Handle<Object> CallIndexedDescriptorNative(
       Handle<InterceptorInfo> interceptor,
       uint32_t index,
       PropertyDescriptor* desc);
+  inline Handle<JSObject> CallIndexedEnumerator(
+      Handle<InterceptorInfo> interceptor);
 
  private:
   /*

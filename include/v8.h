@@ -5645,7 +5645,9 @@ typedef void (*GenericNamedPropertyDescriptorCallback)(
     Local<Name> property, const PropertyCallbackInfo<Value>& info);
 
 typedef void (*GenericNamedPropertyDescriptorNativeCallback)(
-    Local<Name> property, PropertyDescriptor* descriptor);
+    Local<Name> property,
+    PropertyDescriptor* descriptor,
+    const PropertyCallbackInfo<Boolean>& info);
 
 /**
  * See `v8::GenericNamedPropertyGetterCallback`.
@@ -5702,7 +5704,9 @@ typedef void (*IndexedPropertyDescriptorCallback)(
  * See `v8::GenericNamedPropertyDescriptorNativeCallback`.
  */
 typedef void (*IndexedPropertyDescriptorNativeCallback)(
-    uint32_t index, PropertyDescriptor* descriptor);
+    uint32_t index,
+    PropertyDescriptor* descriptor,
+    const PropertyCallbackInfo<Boolean>& info);
 
 /**
  * Access type specification.
