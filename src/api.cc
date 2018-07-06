@@ -1852,13 +1852,17 @@ void ObjectTemplate::SetAccessor(v8::Local<Name> name,
 }
 
 template <typename Getter, typename Setter, typename Query, typename Descriptor,
-          typename Deleter, typename Enumerator, typename Definer>
+          typename DescriptorNative, typename Deleter, typename Enumerator,
+          typename Definer>
 static i::Handle<i::InterceptorInfo> CreateInterceptorInfo(
     i::Isolate* isolate, Getter getter, Setter setter, Query query,
-    Descriptor descriptor, Deleter remover, Enumerator enumerator,
-    Definer definer, Local<Value> data, PropertyHandlerFlags flags) {
+    Descriptor descriptor, DescriptorNative descriptor_native, Deleter remover,
+    Enumerator enumerator, Definer definer, Local<Value> data,
+    PropertyHandlerFlags flags) {
+  // Either descriptor must be unset.
+  DCHECK(descriptor == nullptr || descriptor_native == nullptr);
   // Either intercept attributes or descriptor.
-  DCHECK(query == nullptr || descriptor == nullptr);
+  DCHECK(query == nullptr || (descriptor == nullptr || descriptor_native == nullptr));
   // Only use descriptor callback with definer callback.
   DCHECK(query == nullptr || definer == nullptr);
   auto obj = i::Handle<i::InterceptorInfo>::cast(
@@ -1870,6 +1874,8 @@ static i::Handle<i::InterceptorInfo> CreateInterceptorInfo(
   if (query != 0) SET_FIELD_WRAPPED(isolate, obj, set_query, query);
   if (descriptor != 0)
     SET_FIELD_WRAPPED(isolate, obj, set_descriptor, descriptor);
+  if (descriptor_native != 0)
+    SET_FIELD_WRAPPED(isolate, obj, set_descriptor_native, descriptor_native);
   if (remover != 0) SET_FIELD_WRAPPED(isolate, obj, set_deleter, remover);
   if (enumerator != 0)
     SET_FIELD_WRAPPED(isolate, obj, set_enumerator, enumerator);
@@ -1893,37 +1899,45 @@ static i::Handle<i::InterceptorInfo> CreateInterceptorInfo(
 }
 
 template <typename Getter, typename Setter, typename Query, typename Descriptor,
-          typename Deleter, typename Enumerator, typename Definer>
+          typename DescriptorNative, typename Deleter, typename Enumerator,
+          typename Definer>
 static i::Handle<i::InterceptorInfo> CreateNamedInterceptorInfo(
     i::Isolate* isolate, Getter getter, Setter setter, Query query,
-    Descriptor descriptor, Deleter remover, Enumerator enumerator,
-    Definer definer, Local<Value> data, PropertyHandlerFlags flags) {
+    Descriptor descriptor, DescriptorNative descriptor_native, Deleter remover,
+    Enumerator enumerator, Definer definer, Local<Value> data,
+    PropertyHandlerFlags flags) {
   auto interceptor =
-      CreateInterceptorInfo(isolate, getter, setter, query, descriptor, remover,
-                            enumerator, definer, data, flags);
+      CreateInterceptorInfo(isolate, getter, setter, query, descriptor,
+                            descriptor_native, remover, enumerator, definer,
+                            data, flags);
   interceptor->set_is_named(true);
   return interceptor;
 }
 
 template <typename Getter, typename Setter, typename Query, typename Descriptor,
-          typename Deleter, typename Enumerator, typename Definer>
+          typename DescriptorNative, typename Deleter, typename Enumerator,
+          typename Definer>
 static i::Handle<i::InterceptorInfo> CreateIndexedInterceptorInfo(
     i::Isolate* isolate, Getter getter, Setter setter, Query query,
-    Descriptor descriptor, Deleter remover, Enumerator enumerator,
-    Definer definer, Local<Value> data, PropertyHandlerFlags flags) {
+    Descriptor descriptor, DescriptorNative descriptor_native, Deleter remover,
+    Enumerator enumerator, Definer definer, Local<Value> data,
+    PropertyHandlerFlags flags) {
   auto interceptor =
-      CreateInterceptorInfo(isolate, getter, setter, query, descriptor, remover,
-                            enumerator, definer, data, flags);
+      CreateInterceptorInfo(isolate, getter, setter, query, descriptor,
+                            descriptor_native, remover, enumerator, definer,
+                            data, flags);
   interceptor->set_is_named(false);
   return interceptor;
 }
 
 template <typename Getter, typename Setter, typename Query, typename Descriptor,
-          typename Deleter, typename Enumerator, typename Definer>
+          typename DescriptorNative, typename Deleter, typename Enumerator,
+          typename Definer>
 static void ObjectTemplateSetNamedPropertyHandler(
     ObjectTemplate* templ, Getter getter, Setter setter, Query query,
-    Descriptor descriptor, Deleter remover, Enumerator enumerator,
-    Definer definer, Local<Value> data, PropertyHandlerFlags flags) {
+    Descriptor descriptor, DescriptorNative descriptor_native, Deleter remover,
+    Enumerator enumerator, Definer definer, Local<Value> data,
+    PropertyHandlerFlags flags) {
   i::Isolate* isolate = Utils::OpenHandle(templ)->GetIsolate();
   ENTER_V8_NO_SCRIPT_NO_EXCEPTION(isolate);
   i::HandleScope scope(isolate);
@@ -1931,7 +1945,8 @@ static void ObjectTemplateSetNamedPropertyHandler(
   EnsureNotInstantiated(cons, "ObjectTemplateSetNamedPropertyHandler");
   auto obj =
       CreateNamedInterceptorInfo(isolate, getter, setter, query, descriptor,
-                                 remover, enumerator, definer, data, flags);
+                                 descriptor_native, remover, enumerator,
+                                 definer, data, flags);
   cons->set_named_property_handler(*obj);
 }
 
@@ -1941,16 +1956,16 @@ void ObjectTemplate::SetNamedPropertyHandler(
     NamedPropertyQueryCallback query, NamedPropertyDeleterCallback remover,
     NamedPropertyEnumeratorCallback enumerator, Local<Value> data) {
   ObjectTemplateSetNamedPropertyHandler(
-      this, getter, setter, query, nullptr, remover, enumerator, nullptr, data,
-      PropertyHandlerFlags::kOnlyInterceptStrings);
+      this, getter, setter, query, nullptr, nullptr, remover, enumerator,
+      nullptr, data, PropertyHandlerFlags::kOnlyInterceptStrings);
 }
 
 void ObjectTemplate::SetHandler(
     const NamedPropertyHandlerConfiguration& config) {
   ObjectTemplateSetNamedPropertyHandler(
       this, config.getter, config.setter, config.query, config.descriptor,
-      config.deleter, config.enumerator, config.definer, config.data,
-      config.flags);
+      config.descriptor_native, config.deleter, config.enumerator,
+      config.definer, config.data, config.flags);
 }
 
 
@@ -2010,14 +2025,16 @@ void ObjectTemplate::SetAccessCheckCallbackAndHandler(
   SET_FIELD_WRAPPED(isolate, info, set_callback, callback);
   auto named_interceptor = CreateNamedInterceptorInfo(
       isolate, named_handler.getter, named_handler.setter, named_handler.query,
-      named_handler.descriptor, named_handler.deleter, named_handler.enumerator,
-      named_handler.definer, named_handler.data, named_handler.flags);
+      named_handler.descriptor, named_handler.descriptor_native,
+      named_handler.deleter, named_handler.enumerator, named_handler.definer,
+      named_handler.data, named_handler.flags);
   info->set_named_interceptor(*named_interceptor);
   auto indexed_interceptor = CreateIndexedInterceptorInfo(
       isolate, indexed_handler.getter, indexed_handler.setter,
       indexed_handler.query, indexed_handler.descriptor,
-      indexed_handler.deleter, indexed_handler.enumerator,
-      indexed_handler.definer, indexed_handler.data, indexed_handler.flags);
+      indexed_handler.descriptor_native, indexed_handler.deleter,
+      indexed_handler.enumerator, indexed_handler.definer,
+      indexed_handler.data, indexed_handler.flags);
   info->set_indexed_interceptor(*indexed_interceptor);
 
   if (data.IsEmpty()) {
@@ -2038,8 +2055,8 @@ void ObjectTemplate::SetHandler(
   EnsureNotInstantiated(cons, "v8::ObjectTemplate::SetHandler");
   auto obj = CreateIndexedInterceptorInfo(
       isolate, config.getter, config.setter, config.query, config.descriptor,
-      config.deleter, config.enumerator, config.definer, config.data,
-      config.flags);
+      config.descriptor_native, config.deleter, config.enumerator,
+      config.definer, config.data, config.flags);
   cons->set_indexed_property_handler(*obj);
 }
 
@@ -4335,7 +4352,7 @@ struct v8::PropertyDescriptor::PrivateData {
 
 v8::PropertyDescriptor::PropertyDescriptor() : private_(new PrivateData()) {}
 
-void v8::PropertyDescriptor::Reset(Local<Value> value) {
+void v8::PropertyDescriptor::Reset() {
   delete private_;
   private_ = new PrivateData();
 }

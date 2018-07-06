@@ -137,6 +137,7 @@ class InterceptorInfo : public Struct {
   DECL_ACCESSORS(setter, Object)
   DECL_ACCESSORS(query, Object)
   DECL_ACCESSORS(descriptor, Object)
+  DECL_ACCESSORS(descriptor_native, Object)
   DECL_ACCESSORS(deleter, Object)
   DECL_ACCESSORS(enumerator, Object)
   DECL_ACCESSORS(definer, Object)
@@ -160,7 +161,8 @@ class InterceptorInfo : public Struct {
   static const int kSetterOffset = kGetterOffset + kPointerSize;
   static const int kQueryOffset = kSetterOffset + kPointerSize;
   static const int kDescriptorOffset = kQueryOffset + kPointerSize;
-  static const int kDeleterOffset = kDescriptorOffset + kPointerSize;
+  static const int kDescriptorNativeOffset = kDescriptorOffset + kPointerSize;
+  static const int kDeleterOffset = kDescriptorNativeOffset + kPointerSize;
   static const int kEnumeratorOffset = kDeleterOffset + kPointerSize;
   static const int kDefinerOffset = kEnumeratorOffset + kPointerSize;
   static const int kDataOffset = kDefinerOffset + kPointerSize;

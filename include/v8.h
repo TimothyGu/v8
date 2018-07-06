@@ -4285,19 +4285,19 @@ class V8_EXPORT PropertyDescriptor {
  public:
   // GenericDescriptor
   PropertyDescriptor();
-  Reset();
+  void Reset();
 
   // DataDescriptor
   PropertyDescriptor(Local<Value> value);
-  Reset(Local<Value> value);
+  void Reset(Local<Value> value);
 
   // DataDescriptor with writable property
   PropertyDescriptor(Local<Value> value, bool writable);
-  Reset(Local<Value> value, bool writable);
+  void Reset(Local<Value> value, bool writable);
 
   // AccessorDescriptor
   PropertyDescriptor(Local<Value> get, Local<Value> set);
-  Reset(Local<Value> get, Local<Value> set);
+  void Reset(Local<Value> get, Local<Value> set);
 
   ~PropertyDescriptor();
 
@@ -5644,6 +5644,9 @@ typedef void (*GenericNamedPropertyDefinerCallback)(
 typedef void (*GenericNamedPropertyDescriptorCallback)(
     Local<Name> property, const PropertyCallbackInfo<Value>& info);
 
+typedef void (*GenericNamedPropertyDescriptorNativeCallback)(
+    Local<Name> property, PropertyDescriptor* descriptor);
+
 /**
  * See `v8::GenericNamedPropertyGetterCallback`.
  */
@@ -5694,6 +5697,12 @@ typedef void (*IndexedPropertyDefinerCallback)(
  */
 typedef void (*IndexedPropertyDescriptorCallback)(
     uint32_t index, const PropertyCallbackInfo<Value>& info);
+
+/**
+ * See `v8::GenericNamedPropertyDescriptorNativeCallback`.
+ */
+typedef void (*IndexedPropertyDescriptorNativeCallback)(
+    uint32_t index, PropertyDescriptor* descriptor);
 
 /**
  * Access type specification.
@@ -5994,6 +6003,7 @@ struct NamedPropertyHandlerConfiguration {
         enumerator(enumerator),
         definer(0),
         descriptor(0),
+        descriptor_native(0),
         data(data),
         flags(flags) {}
 
@@ -6013,6 +6023,28 @@ struct NamedPropertyHandlerConfiguration {
         enumerator(enumerator),
         definer(definer),
         descriptor(descriptor),
+        descriptor_native(0),
+        data(data),
+        flags(flags) {}
+
+  NamedPropertyHandlerConfiguration(
+      GenericNamedPropertyGetterCallback getter,
+      GenericNamedPropertySetterCallback setter,
+      GenericNamedPropertyDescriptorNativeCallback descriptor_native,
+      GenericNamedPropertyDeleterCallback deleter,
+      GenericNamedPropertyEnumeratorCallback enumerator,
+      GenericNamedPropertyDefinerCallback definer,
+      bool use_native,
+      Local<Value> data = Local<Value>(),
+      PropertyHandlerFlags flags = PropertyHandlerFlags::kNone)
+      : getter(getter),
+        setter(setter),
+        query(0),
+        deleter(deleter),
+        enumerator(enumerator),
+        definer(definer),
+        descriptor(0),
+        descriptor_native(descriptor_native),
         data(data),
         flags(flags) {}
 
@@ -6023,6 +6055,7 @@ struct NamedPropertyHandlerConfiguration {
   GenericNamedPropertyEnumeratorCallback enumerator;
   GenericNamedPropertyDefinerCallback definer;
   GenericNamedPropertyDescriptorCallback descriptor;
+  GenericNamedPropertyDescriptorNativeCallback descriptor_native;
   Local<Value> data;
   PropertyHandlerFlags flags;
 };
@@ -6045,6 +6078,7 @@ struct IndexedPropertyHandlerConfiguration {
         enumerator(enumerator),
         definer(0),
         descriptor(0),
+        descriptor_native(0),
         data(data),
         flags(flags) {}
 
@@ -6064,6 +6098,28 @@ struct IndexedPropertyHandlerConfiguration {
         enumerator(enumerator),
         definer(definer),
         descriptor(descriptor),
+        descriptor_native(0),
+        data(data),
+        flags(flags) {}
+
+  IndexedPropertyHandlerConfiguration(
+      IndexedPropertyGetterCallback getter,
+      IndexedPropertySetterCallback setter,
+      IndexedPropertyDescriptorNativeCallback descriptor_native,
+      IndexedPropertyDeleterCallback deleter,
+      IndexedPropertyEnumeratorCallback enumerator,
+      IndexedPropertyDefinerCallback definer,
+      bool use_native,
+      Local<Value> data = Local<Value>(),
+      PropertyHandlerFlags flags = PropertyHandlerFlags::kNone)
+      : getter(getter),
+        setter(setter),
+        query(0),
+        deleter(deleter),
+        enumerator(enumerator),
+        definer(definer),
+        descriptor(0),
+        descriptor_native(descriptor_native),
         data(data),
         flags(flags) {}
 
@@ -6074,6 +6130,7 @@ struct IndexedPropertyHandlerConfiguration {
   IndexedPropertyEnumeratorCallback enumerator;
   IndexedPropertyDefinerCallback definer;
   IndexedPropertyDescriptorCallback descriptor;
+  IndexedPropertyDescriptorNativeCallback descriptor_native;
   Local<Value> data;
   PropertyHandlerFlags flags;
 };
