@@ -4335,9 +4335,19 @@ struct v8::PropertyDescriptor::PrivateData {
 
 v8::PropertyDescriptor::PropertyDescriptor() : private_(new PrivateData()) {}
 
+void v8::PropertyDescriptor::Reset(Local<Value> value) {
+  delete private_;
+  private_ = new PrivateData();
+}
+
 // DataDescriptor
 v8::PropertyDescriptor::PropertyDescriptor(v8::Local<v8::Value> value)
     : private_(new PrivateData()) {
+  private_->desc.set_value(Utils::OpenHandle(*value, true));
+}
+
+void v8::PropertyDescriptor::Reset(v8::Local<v8::Value> value) {
+  Reset();
   private_->desc.set_value(Utils::OpenHandle(*value, true));
 }
 
@@ -4349,12 +4359,26 @@ v8::PropertyDescriptor::PropertyDescriptor(v8::Local<v8::Value> value,
   private_->desc.set_writable(writable);
 }
 
+void v8::PropertyDescriptor::Reset(v8::Local<v8::Value> value, bool writable) {
+  Reset(value);
+  private_->desc.set_writable(writable);
+}
+
 // AccessorDescriptor
 v8::PropertyDescriptor::PropertyDescriptor(v8::Local<v8::Value> get,
                                            v8::Local<v8::Value> set)
     : private_(new PrivateData()) {
   DCHECK(get.IsEmpty() || get->IsUndefined() || get->IsFunction());
   DCHECK(set.IsEmpty() || set->IsUndefined() || set->IsFunction());
+  private_->desc.set_get(Utils::OpenHandle(*get, true));
+  private_->desc.set_set(Utils::OpenHandle(*set, true));
+}
+
+void v8::PropertyDescriptor::Reset(v8::Local<v8::Value> get,
+                                   v8::Local<v8::Value> set) {
+  DCHECK(get.IsEmpty() || get->IsUndefined() || get->IsFunction());
+  DCHECK(set.IsEmpty() || set->IsUndefined() || set->IsFunction());
+  Reset();
   private_->desc.set_get(Utils::OpenHandle(*get, true));
   private_->desc.set_set(Utils::OpenHandle(*set, true));
 }

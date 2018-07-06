@@ -4285,15 +4285,19 @@ class V8_EXPORT PropertyDescriptor {
  public:
   // GenericDescriptor
   PropertyDescriptor();
+  Reset();
 
   // DataDescriptor
   PropertyDescriptor(Local<Value> value);
+  Reset(Local<Value> value);
 
   // DataDescriptor with writable property
   PropertyDescriptor(Local<Value> value, bool writable);
+  Reset(Local<Value> value, bool writable);
 
   // AccessorDescriptor
   PropertyDescriptor(Local<Value> get, Local<Value> set);
+  Reset(Local<Value> get, Local<Value> set);
 
   ~PropertyDescriptor();
 
