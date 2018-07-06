@@ -4348,8 +4348,7 @@ Maybe<bool> v8::Object::CreateDataProperty(v8::Local<v8::Context> context,
 v8::PropertyDescriptor::PropertyDescriptor() : private_(new PrivateData()) {}
 
 void v8::PropertyDescriptor::Reset() {
-  delete private_;
-  private_ = new PrivateData();
+  private_->desc.Reset();
 }
 
 // DataDescriptor

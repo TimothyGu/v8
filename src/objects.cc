@@ -7859,6 +7859,7 @@ Maybe<bool> GetPropertyDescriptorWithInterceptor(LookupIterator* it,
     }
   }
   it->Restart();
+  desc->Reset();
   return Just(false);
 }
 }  // namespace

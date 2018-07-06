@@ -60,6 +60,20 @@ class PropertyDescriptor {
            !has_value() && !has_get() && !has_set();
   }
 
+  void Reset() {
+    enumerable_ = false;
+    has_enumerable_ = false;
+    configurable_ = false;
+    has_configurable_ = false;
+    writable_ = false;
+    has_writable_ = false;
+
+    value_ = Handle<Object>();
+    get_ = Handle<Object>();
+    set_ = Handle<Object>();
+    name_ = Handle<Object>();
+  }
+
   bool IsRegularAccessorProperty() const {
     return has_configurable() && has_enumerable() && !has_value() &&
            !has_writable() && has_get() && has_set();
