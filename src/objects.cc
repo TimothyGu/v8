@@ -7841,6 +7841,8 @@ Maybe<bool> GetPropertyDescriptorWithInterceptor(LookupIterator* it,
         }
         if (!result.is_null() && result->IsTrue(isolate)) {
           return Just(true);
+        } else {
+          desc->Reset();
         }
       } else {
         if (it->IsElement()) {
@@ -7863,7 +7865,6 @@ Maybe<bool> GetPropertyDescriptorWithInterceptor(LookupIterator* it,
       it->Next();
     }
   }
-  desc->Reset();
   return Just(false);
 }
 }  // namespace
