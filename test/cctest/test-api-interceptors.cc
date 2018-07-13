@@ -587,6 +587,18 @@ void PropertyDescriptorCallback(
                                 .ToLocalChecked();
   info.GetReturnValue().Set(descriptor);
 }
+
+int native_descriptor_was_called;
+
+void PropertyDescriptorNativeCallback(
+    Local<Name> name,
+    v8::PropertyDescriptor* descriptor,
+    const v8::PropertyCallbackInfo<v8::Boolean>& info) {
+  // Intercept the callback by setting a different descriptor.
+  native_descriptor_was_called++;
+  descriptor->Reset(v8_num(5));
+  info.GetReturnValue().Set(true);
+}
 }  // namespace
 
 // Check that the descriptor callback is called on the global object.
@@ -615,6 +627,47 @@ THREADED_TEST(DescriptorCallbackOnGlobalObject) {
                   ->Int32Value(ctx)
                   .FromJust());
   CHECK_EQ(1, descriptor_was_called);
+}
+
+THREADED_TEST(DescriptorNativeCallbackOnGlobalObject) {
+  v8::HandleScope scope(CcTest::isolate());
+  LocalContext env;
+  v8::Local<v8::FunctionTemplate> templ =
+      v8::FunctionTemplate::New(CcTest::isolate());
+
+  v8::Local<ObjectTemplate> object_template = templ->InstanceTemplate();
+  object_template->SetHandler(v8::NamedPropertyHandlerConfiguration(
+      nullptr, nullptr, PropertyDescriptorNativeCallback, nullptr, nullptr, nullptr, true));
+  v8::Local<v8::Context> ctx =
+      v8::Context::New(CcTest::isolate(), nullptr, object_template);
+
+  native_descriptor_was_called = 0;
+
+  {
+    v8::Local<v8::String> code = v8_str(
+        "var x = 42; var desc = Object.getOwnPropertyDescriptor(this, 'x'); "
+        "desc.value;");
+    CHECK_EQ(5, v8::Script::Compile(ctx, code)
+                    .ToLocalChecked()
+                    ->Run(ctx)
+                    .ToLocalChecked()
+                    ->Int32Value(ctx)
+                    .FromJust());
+  }
+
+  {
+    v8::Local<v8::String> code = v8_str(
+        "var y = 42; var desc = Object.getOwnPropertyDescriptor(this, 'y'); "
+        "desc.configurable;");
+    CHECK_EQ(false, v8::Script::Compile(ctx, code)
+                        .ToLocalChecked()
+                        ->Run(ctx)
+                        .ToLocalChecked()
+                        ->BooleanValue(ctx)
+                        .FromJust());
+  }
+
+  CHECK_EQ(2, native_descriptor_was_called);
 }
 
 namespace {
@@ -2055,6 +2108,34 @@ void InterceptingPropertyDescriptorCallback(
                                 .ToLocalChecked();
   info.GetReturnValue().Set(descriptor);
 }
+
+void EmptyPropertyDescriptorNativeCallback1(
+    Local<Name> name,
+    v8::PropertyDescriptor* descriptor,
+    const v8::PropertyCallbackInfo<v8::Boolean>& info) {
+  // Do not intercept by not calling info.GetReturnValue().Set(), but still set
+  // descriptor to a valid value.
+  descriptor->Reset(v8_num(0));
+}
+
+void EmptyPropertyDescriptorNativeCallback2(
+    Local<Name> name,
+    v8::PropertyDescriptor* descriptor,
+    const v8::PropertyCallbackInfo<v8::Boolean>& info) {
+  // Do not intercept by calling info.GetReturnValue().Set(false), but still
+  // set descriptor to a valid value.
+  descriptor->Reset(v8_num(0));
+  info.GetReturnValue().Set(false);
+}
+
+void InterceptingPropertyDescriptorNativeCallback(
+    Local<Name> name,
+    v8::PropertyDescriptor* descriptor,
+    const v8::PropertyCallbackInfo<v8::Boolean>& info) {
+  // Intercept the callback by setting return value to true.
+  descriptor->Reset(v8_num(42));
+  info.GetReturnValue().Set(true);
+}
 }  // namespace
 
 THREADED_TEST(PropertyDescriptorCallback) {
@@ -2088,6 +2169,79 @@ THREADED_TEST(PropertyDescriptorCallback) {
         v8::FunctionTemplate::New(CcTest::isolate());
     templ->InstanceTemplate()->SetHandler(v8::NamedPropertyHandlerConfiguration(
         0, 0, InterceptingPropertyDescriptorCallback, 0, 0, 0));
+    env->Global()
+        ->Set(env.local(), v8_str("obj"), templ->GetFunction(env.local())
+                                              .ToLocalChecked()
+                                              ->NewInstance(env.local())
+                                              .ToLocalChecked())
+        .FromJust();
+    const char* code =
+        "obj.x = 17; "
+        "var desc = Object.getOwnPropertyDescriptor(obj, 'x');"
+        "desc.value;";
+    CHECK_EQ(42, v8_compile(code)
+                     ->Run(env.local())
+                     .ToLocalChecked()
+                     ->Int32Value(env.local())
+                     .FromJust());
+  }
+}
+
+THREADED_TEST(PropertyDescriptorNativeCallback) {
+  v8::HandleScope scope(CcTest::isolate());
+  LocalContext env;
+
+  {  // Normal behavior of getOwnPropertyDescriptor() with empty callback.
+    v8::Local<v8::FunctionTemplate> templ =
+        v8::FunctionTemplate::New(CcTest::isolate());
+    templ->InstanceTemplate()->SetHandler(v8::NamedPropertyHandlerConfiguration(
+        0, 0, EmptyPropertyDescriptorNativeCallback1, 0, 0, 0, true));
+    env->Global()
+        ->Set(env.local(), v8_str("obj"), templ->GetFunction(env.local())
+                                              .ToLocalChecked()
+                                              ->NewInstance(env.local())
+                                              .ToLocalChecked())
+        .FromJust();
+    const char* code =
+        "obj.x = 17; "
+        "var desc = Object.getOwnPropertyDescriptor(obj, 'x');"
+        "desc.value;";
+    CHECK_EQ(17, v8_compile(code)
+                     ->Run(env.local())
+                     .ToLocalChecked()
+                     ->Int32Value(env.local())
+                     .FromJust());
+  }
+  puts("1");
+
+  {  // Normal behavior of getOwnPropertyDescriptor() with empty callback.
+    v8::Local<v8::FunctionTemplate> templ =
+        v8::FunctionTemplate::New(CcTest::isolate());
+    templ->InstanceTemplate()->SetHandler(v8::NamedPropertyHandlerConfiguration(
+        0, 0, EmptyPropertyDescriptorNativeCallback2, 0, 0, 0, true));
+    env->Global()
+        ->Set(env.local(), v8_str("obj"), templ->GetFunction(env.local())
+                                              .ToLocalChecked()
+                                              ->NewInstance(env.local())
+                                              .ToLocalChecked())
+        .FromJust();
+    const char* code =
+        "obj.x = 17; "
+        "var desc = Object.getOwnPropertyDescriptor(obj, 'x');"
+        "desc.value;";
+    CHECK_EQ(17, v8_compile(code)
+                     ->Run(env.local())
+                     .ToLocalChecked()
+                     ->Int32Value(env.local())
+                     .FromJust());
+  }
+  puts("2");
+
+  {  // Intercept getOwnPropertyDescriptor().
+    v8::Local<v8::FunctionTemplate> templ =
+        v8::FunctionTemplate::New(CcTest::isolate());
+    templ->InstanceTemplate()->SetHandler(v8::NamedPropertyHandlerConfiguration(
+        0, 0, InterceptingPropertyDescriptorNativeCallback, 0, 0, 0, true));
     env->Global()
         ->Set(env.local(), v8_str("obj"), templ->GetFunction(env.local())
                                               .ToLocalChecked()
